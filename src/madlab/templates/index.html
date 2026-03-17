@@ -1525,10 +1525,11 @@ function renderChampionshipProjection(svg, proj, picks) {
 
   // Spread line
   const champ = picks[62];
+  const champName = champ && champ.name ? champ.name : String(champ);
   const spreadAbs = Math.abs(proj.spread);
   const spreadStr = spreadAbs < 0.5
     ? 'Pick \'em'
-    : `${champ} by ${spreadAbs.toFixed(1)}`;
+    : `${champName} by ${spreadAbs.toFixed(1)}`;
   g.appendChild(t({x: cx, y: baseY + 13, 'text-anchor': 'middle', 'font-size': '10',
     fill: '#d45f00', 'font-weight': '700',
     'font-family': 'DM Sans, sans-serif'}, spreadStr));
