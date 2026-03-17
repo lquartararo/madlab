@@ -262,11 +262,21 @@
       cursor: pointer;
       white-space: nowrap;
       min-width: 200px;
-      transition: background 0.15s, transform 0.1s;
+      transition: background 0.15s,
+                  transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  box-shadow 0.18s;
     }
 
-    #find-btn:hover:not(:disabled) { background: var(--accent-hover); }
-    #find-btn:active:not(:disabled) { transform: translateY(1px); }
+    #find-btn:hover:not(:disabled) {
+      background: var(--accent-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px oklch(62% 0.22 38 / 0.28);
+    }
+    #find-btn:active:not(:disabled) {
+      transform: translateY(1px) scale(0.97);
+      box-shadow: 0 1px 4px oklch(62% 0.22 38 / 0.15);
+      transition-duration: 0.08s;
+    }
 
     #find-btn:disabled {
       background: var(--rule-strong);
@@ -315,6 +325,18 @@
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    #sim-commentary {
+      font-size: 0.7rem;
+      font-style: italic;
+      color: var(--ink-3);
+      padding: 0 1rem 0.5rem 1rem;
+      max-width: 60ch;
+      opacity: 0;
+      transition: opacity 0.6s;
+      line-height: 1.4;
+    }
+    #sim-commentary.visible { opacity: 1; }
 
     #status-text {
       font-size: 0.8125rem;
@@ -639,6 +661,7 @@
     <span id="status-text">Starting…</span>
     <span id="status-step"></span>
   </div>
+  <div id="sim-commentary" aria-hidden="true"></div>
   <div class="progress-track">
     <div class="progress-fill" id="progress-fill"></div>
   </div>
@@ -705,6 +728,16 @@ let running             = false;
 let resultData          = null;
 let currentBracketSlots = null;
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ── Console easter egg ────────────────────────────────────────────────────
+console.log(
+  '%c MADLAB ',
+  'background:#d45f00;color:#fff;font-family:monospace;font-size:14px;font-weight:bold;padding:4px 8px;border-radius:3px'
+);
+console.log(
+  '%cBeat your bracket pool with statistical bracket optimization.\n\nFitted on 6,200 games · 2,000 tournament simulations · optimized for your specific pool.\n\nCode: https://github.com/lquartararo/madlab\n\n"An approximate answer to the right question is worth more than an exact answer to the wrong question." — John Tukey',
+  'color:#7a7a8e;font-family:monospace;font-size:11px;line-height:1.6'
+);
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 function cssVar(name) {
@@ -1210,15 +1243,27 @@ function revealPickElements(pickEls) {
     if (r === 6) championG = group[0];
   });
 
-  // Champion glow pulse
+  // Champion reveal — dim the bracket, then spotlight the champion
   if (championG) {
+    const svgEl = championG.closest('svg');
     setTimeout(() => {
+      // Briefly dim everything else
+      const linesLayer = svgEl.querySelector('[data-layer="lines"]');
+      const cardsLayer = svgEl.querySelector('[data-layer="cards"]');
+      if (linesLayer && cardsLayer && !reducedMotion) {
+        linesLayer.animate([{opacity:1},{opacity:0.18},{opacity:1}], {duration:1000, easing:'ease-in-out'});
+        cardsLayer.animate([{opacity:1},{opacity:0.18},{opacity:1}], {duration:1000, easing:'ease-in-out'});
+        championG.animate([{opacity:0.18},{opacity:1}], {duration:280, easing:'ease-out', fill:'both'});
+      }
+      // Triple glow pulse
       championG.animate([
         { filter: 'drop-shadow(0 0 0px #d45f0000)' },
-        { filter: 'drop-shadow(0 0 10px #d45f00bb)' },
-        { filter: 'drop-shadow(0 0 4px #d45f0066)' },
+        { filter: 'drop-shadow(0 0 14px #d45f00dd)' },
+        { filter: 'drop-shadow(0 0 6px #d45f0088)' },
+        { filter: 'drop-shadow(0 0 14px #d45f00dd)' },
+        { filter: 'drop-shadow(0 0 4px #d45f0044)' },
         { filter: 'drop-shadow(0 0 0px #d45f0000)' },
-      ], { duration: 1200, easing: 'ease-in-out', fill: 'forwards' });
+      ], { duration: 1600, easing: 'ease-in-out', fill: 'forwards' });
     }, lastDelay + 60);
   }
 }
@@ -1291,6 +1336,7 @@ async function findBracket() {
   statusBar.className = 'visible';
   document.getElementById('status-text').textContent = 'Starting…';
   resetProgress();
+  startCommentary();
 
   const body = {
     league:         currentLeague,
@@ -1337,6 +1383,104 @@ async function findBracket() {
   statusBar.classList.remove('visible');
 }
 
+// ── Simulation commentary ─────────────────────────────────────────────────
+const COMMENTARY = [
+  "Running the bracket thousands of times so you can run it once.",
+  "Most pool entrants pick chalk. The model knows where the value actually is.",
+  "Each simulation is a complete tournament — upsets, comebacks, and collapses included.",
+  "The model has seen every game this season. Margin of victory is capped at 25 points so blowouts don't skew the numbers.",
+  "Optimizing for your specific pool size, not just the tournament outcome.",
+  "The crowd clusters around favorites. That clustering is your edge.",
+  "Bradley-Terry fits strength ratings to every head-to-head result this season.",
+  "Your bracket is being tested against thousands of simulated pools right now.",
+  "A 12-seed just made the Final Four in sim #847. The model accounts for that.",
+  "The math is running. Your bracket is coming.",
+];
+let _commentaryTimer = null;
+let _commentaryIdx = 0;
+
+function startCommentary() {
+  const el = document.getElementById('sim-commentary');
+  _commentaryIdx = Math.floor(Math.random() * COMMENTARY.length);
+  el.textContent = COMMENTARY[_commentaryIdx];
+  el.classList.add('visible');
+  _commentaryTimer = setInterval(() => {
+    el.classList.remove('visible');
+    setTimeout(() => {
+      _commentaryIdx = (_commentaryIdx + 1) % COMMENTARY.length;
+      el.textContent = COMMENTARY[_commentaryIdx];
+      el.classList.add('visible');
+    }, 600);
+  }, 4000);
+}
+
+function stopCommentary() {
+  clearInterval(_commentaryTimer);
+  const el = document.getElementById('sim-commentary');
+  el.classList.remove('visible');
+}
+
+// ── Confetti ──────────────────────────────────────────────────────────────
+function fireConfetti() {
+  if (reducedMotion) return;
+  const canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999';
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const COLORS = ['#d45f00','#f5dece','#1e1e2e','#fdf3ec','#e8843a','#fff'];
+  const N = 55;
+  const particles = Array.from({length: N}, () => ({
+    x: canvas.width * (0.3 + Math.random() * 0.4),
+    y: canvas.height * 0.4,
+    vx: (Math.random() - 0.5) * 9,
+    vy: -(Math.random() * 8 + 4),
+    r: Math.random() * 5 + 2,
+    color: COLORS[Math.floor(Math.random() * COLORS.length)],
+    spin: (Math.random() - 0.5) * 0.3,
+    angle: Math.random() * Math.PI * 2,
+    gravity: 0.22 + Math.random() * 0.1,
+    life: 1,
+    decay: 0.012 + Math.random() * 0.008,
+  }));
+
+  function frame() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let alive = false;
+    particles.forEach(p => {
+      p.life -= p.decay;
+      if (p.life <= 0) return;
+      alive = true;
+      p.vy += p.gravity;
+      p.x  += p.vx;
+      p.y  += p.vy;
+      p.angle += p.spin;
+      ctx.save();
+      ctx.globalAlpha = p.life;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angle);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.r, -p.r / 2, p.r * 2, p.r);
+      ctx.restore();
+    });
+    if (alive) requestAnimationFrame(frame);
+    else canvas.remove();
+  }
+  requestAnimationFrame(frame);
+}
+
+// ── Win verdict ───────────────────────────────────────────────────────────
+function winVerdict(pct, random) {
+  const edge = pct - random;
+  if (pct >= 38)       return `Top bracket in most pools · ${edge.toFixed(1)}pp edge`;
+  if (pct >= 28)       return `Genuine edge over the field · +${edge.toFixed(1)}pp`;
+  if (pct >= 18)       return `Competitive against the crowd · +${edge.toFixed(1)}pp`;
+  if (edge > 0)        return `Above random chance · +${edge.toFixed(1)}pp`;
+  return                      `vs. ${random.toFixed(1)}% at random`;
+}
+
 function handleEvent(evt) {
   if (evt.type === 'progress') {
     document.getElementById('status-text').textContent = evt.message;
@@ -1344,8 +1488,10 @@ function handleEvent(evt) {
     if (stage) setProgress(stage.pct, stage.step);
   } else if (evt.type === 'result') {
     setProgress(100, '');
+    stopCommentary();
     setTimeout(() => showResult(evt), 300);
   } else if (evt.type === 'error') {
+    stopCommentary();
     showError(evt.message);
   }
 }
@@ -1356,14 +1502,17 @@ function showResult(evt) {
 
   // Stats — count up from zero
   const pool   = parseInt(document.getElementById('ctrl-pool').value);
-  const random = (100 / (pool + 1)).toFixed(1);
-  document.getElementById('stat-win-ctx').textContent = `vs. ${random}% at random`;
+  const random = 100 / (pool + 1);
+  document.getElementById('stat-win-ctx').textContent = winVerdict(evt.stats.win_prob, random);
   const strip = document.getElementById('stats-strip');
   strip.classList.add('visible');
   animateFadeUp(strip);
   countUp(document.getElementById('stat-win'),   evt.stats.win_prob,          '%', 900);
   countUp(document.getElementById('stat-pct'),   evt.stats.mean_percentile,   '%', 900);
   countUp(document.getElementById('stat-score'), evt.stats.mean_score,        '', 900);
+
+  // Confetti for strong brackets
+  if (evt.stats.win_prob >= 28) setTimeout(fireConfetti, 1200);
 
   // Bracket: rebuild with picks → animate via View Transitions (or instant)
   const wrap = document.getElementById('bracket-wrap');
