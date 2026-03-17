@@ -113,9 +113,6 @@ def find_bracket(
     for chunk_idx, start in enumerate(range(0, num_sims, sim_chunk)):
         n = min(sim_chunk, num_sims - start)
 
-        if n_chunks > 1:
-            _emit(f"Scoring chunk {chunk_idx + 1}/{n_chunks}…")
-
         # Tournament outcomes for this chunk: (63, n)
         outcomes_chunk = sim_bracket(
             bracket_empty, prob_matrix=prob_matrix, prob_source=prob_source,
@@ -148,6 +145,7 @@ def find_bracket(
                 pool_all[:, start + j] = s_flat
 
         del pool_chunk, outcomes_chunk  # free memory before next chunk
+        _emit(f"Scored {min(start + n, num_sims):,}/{num_sims:,} pools…")
 
     _emit(f"Selecting best bracket…")
 
