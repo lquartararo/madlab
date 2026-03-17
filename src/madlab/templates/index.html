@@ -969,6 +969,58 @@ function truncName(name, maxLen) {
   return name.slice(0, maxLen - 1) + '…';
 }
 
+function drawFinalistCard(parent, x, cy, h, pick) {
+  const w = B.champW;
+  const y = cy - h / 2;
+  const sw = B.seedW + 4;
+  const g = svgEl('g', { 'data-picked': '1', 'data-team-id': pick.id || '' });
+
+  g.appendChild(svgEl('rect', { x, y, width: w, height: h, rx: 3,
+    fill: C.tint, stroke: C.accent, 'stroke-width': 1 }));
+  g.appendChild(svgEl('rect', { x, y, width: sw, height: h, rx: 3,
+    fill: '#f5dece' }));
+  g.appendChild(svgEl('line', { x1: x+sw, y1: y, x2: x+sw, y2: y+h,
+    stroke: '#e8b89a', 'stroke-width': 0.75 }));
+  g.appendChild(svgEl('text', { x: x+sw/2, y: cy+4,
+    'text-anchor': 'middle', 'font-size': 9,
+    fill: C.accent, 'font-weight': '600', 'font-family': 'DM Sans, sans-serif',
+  }, String(pick.seed)));
+  g.appendChild(svgEl('text', { x: x+sw+6, y: cy+4,
+    'text-anchor': 'start', 'font-size': 11,
+    fill: C.accent, 'font-weight': '600', 'font-family': 'DM Sans, sans-serif',
+  }, truncName(pick.name, 16)));
+
+  parent.appendChild(g);
+  return g;
+}
+
+function drawChampCard(parent, x, y, w, h, pick) {
+  const sw = B.seedW + 4;
+  const cy = y + h / 2;
+  const g = svgEl('g', { 'data-picked': '1', 'data-champ': '1', 'data-team-id': pick.id || '' });
+
+  g.appendChild(svgEl('rect', { x, y, width: w, height: h, rx: 3,
+    fill: C.accent, stroke: C.accent, 'stroke-width': 1.5 }));
+  g.appendChild(svgEl('rect', { x, y, width: sw, height: h, rx: 3,
+    fill: 'rgba(0,0,0,0.15)' }));
+  g.appendChild(svgEl('text', { x: x+sw/2, y: cy+4,
+    'text-anchor': 'middle', 'font-size': 10,
+    fill: '#fff', 'font-weight': '700', 'font-family': 'DM Sans, sans-serif',
+  }, String(pick.seed)));
+  g.appendChild(svgEl('text', { x: x+sw+6, y: cy+5,
+    'text-anchor': 'start', 'font-size': 13,
+    fill: '#fff', 'font-weight': '700', 'font-family': 'DM Sans, sans-serif',
+  }, truncName(pick.name, 14)));
+  g.appendChild(svgEl('text', { x: x+w-6, y: cy+4,
+    'text-anchor': 'end', 'font-size': 7.5,
+    fill: 'rgba(255,255,255,0.75)', 'font-weight': '700',
+    'letter-spacing': '0.1em', 'font-family': 'Barlow Condensed, sans-serif',
+  }, '🏆'));
+
+  parent.appendChild(g);
+  return g;
+}
+
 function buildBracketSVG(slots, picks) {
   // slots: 64 initial teams in display order (left 0..31, right 32..63)
   // picks: 63 picks in display order, or null for empty bracket
@@ -1027,17 +1079,15 @@ function buildBracketSVG(slots, picks) {
   const vxL = (lF4Right + B.champX) / 2;    // 796
   const vxR = (rF4Left  + rChampRight) / 2;  // 1000
 
-  // Left F4 elbow → championship
-  drawLine(linesG, lF4Right,    slotCy(0, 2), vxL,      slotCy(0, 2));
-  drawLine(linesG, lF4Right,    slotCy(1, 2), vxL,      slotCy(1, 2));
-  drawLine(linesG, vxL, slotCy(0, 2), vxL, slotCy(1, 2));
-  drawLine(linesG, vxL,         champCY,      B.champX, champCY);
-
-  // Right F4 elbow → championship
-  drawLine(linesG, rF4Left,     slotCy(0, 2), vxR,         slotCy(0, 2));
-  drawLine(linesG, rF4Left,     slotCy(1, 2), vxR,         slotCy(1, 2));
-  drawLine(linesG, vxR, slotCy(0, 2), vxR, slotCy(1, 2));
-  drawLine(linesG, vxR,         champCY,      rChampRight, champCY);
+  // F4 → Championship elbow connectors (always drawn)
+  drawLine(linesG, lF4Right, slotCy(0,2), vxL, slotCy(0,2));
+  drawLine(linesG, lF4Right, slotCy(1,2), vxL, slotCy(1,2));
+  drawLine(linesG, vxL, slotCy(0,2), vxL, slotCy(1,2));
+  drawLine(linesG, vxL, champCY, B.champX, champCY);
+  drawLine(linesG, rF4Left, slotCy(0,2), vxR, slotCy(0,2));
+  drawLine(linesG, rF4Left, slotCy(1,2), vxR, slotCy(1,2));
+  drawLine(linesG, vxR, slotCy(0,2), vxR, slotCy(1,2));
+  drawLine(linesG, vxR, champCY, rChampRight, champCY);
 
   // --- Picks (if provided) ---
   const pickEls = []; // {el, round} for animation
@@ -1067,11 +1117,41 @@ function buildBracketSVG(slots, picks) {
       }
     }
 
-    // Champion card (picks[62]) — finalists are implied by F4 columns + elbow lines
+    // Championship: runner-up (top) vs champion (bottom)
     {
-      const p = picks[62];
-      const g = drawCard(cardsG, B.champX, champCY, p.seed, p.name, true, true, p.id);
-      pickEls.push({ el: g, round: 6 });
+      const champ    = picks[62];
+      const runnerUp = (picks[62].id === picks[61].id) ? picks[60] : picks[61];
+      const ruH = B.cardH + 4;   // 26px — runner-up card
+      const chH = B.champH;      // 32px — champion card
+      const vsGap = 10;
+      const totalH = ruH + vsGap + chH;
+      const startY = champCY - totalH / 2;
+      const ruCY   = startY + ruH / 2;
+      const chTopY = startY + ruH + vsGap;
+
+      // "CHAMPIONSHIP" label
+      cardsG.appendChild(svgEl('text', {
+        x: B.champX + B.champW / 2, y: startY - 9,
+        'text-anchor': 'middle', 'font-size': 7.5,
+        fill: C.accent, 'font-weight': '700', 'letter-spacing': '0.12em',
+        'font-family': 'Barlow Condensed, sans-serif',
+      }, 'CHAMPIONSHIP'));
+
+      // Runner-up card (tint style, same width as champion)
+      const gRU = drawFinalistCard(cardsG, B.champX, ruCY, ruH, runnerUp);
+      pickEls.push({ el: gRU, round: 5 });
+
+      // "vs" divider between the two cards
+      cardsG.appendChild(svgEl('text', {
+        x: B.champX + B.champW / 2, y: startY + ruH + vsGap / 2 + 3,
+        'text-anchor': 'middle', 'font-size': 7,
+        fill: C.muted, 'font-weight': '600',
+        'font-family': 'Barlow Condensed, sans-serif',
+      }, 'vs'));
+
+      // Champion card (solid accent, white text, trophy)
+      const gC = drawChampCard(cardsG, B.champX, chTopY, B.champW, chH, champ);
+      pickEls.push({ el: gC, round: 6 });
     }
   } else {
     // Empty placeholders for R2..F4 and championship
