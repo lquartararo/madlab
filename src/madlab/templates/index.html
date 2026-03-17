@@ -1044,11 +1044,7 @@ function drawChampCard(parent, x, y, w, h, pick) {
     'text-anchor': 'start', 'font-size': 13,
     fill: '#fff', 'font-weight': '700', 'font-family': 'DM Sans, sans-serif',
   }, truncName(pick.name, 14)));
-  g.appendChild(svgEl('text', { x: x+w-6, y: cy+4,
-    'text-anchor': 'end', 'font-size': 7.5,
-    fill: 'rgba(255,255,255,0.75)', 'font-weight': '700',
-    'letter-spacing': '0.1em', 'font-family': 'Barlow Condensed, sans-serif',
-  }, '🏆'));
+
 
   parent.appendChild(g);
   return g;
@@ -1496,6 +1492,67 @@ function handleEvent(evt) {
   }
 }
 
+// ── Championship projection overlay ──────────────────────────────────────
+function renderChampionshipProjection(svg, proj, picks) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const champX = B.champX, champW = B.champW, H = B.H;
+  const cx = champX + champW / 2;
+
+  // Position below the championship stack (~B.H/2 + 60)
+  const baseY = H / 2 + 68;
+
+  function t(attrs, text) {
+    const el = document.createElementNS(NS, 'text');
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    el.textContent = text;
+    return el;
+  }
+
+  const g = document.createElementNS(NS, 'g');
+  g.setAttribute('data-layer', 'champ-proj');
+  g.style.opacity = '0';
+
+  // Divider line
+  const line = document.createElementNS(NS, 'line');
+  Object.entries({x1: champX + 12, y1: baseY - 8, x2: champX + champW - 12, y2: baseY - 8,
+    stroke: '#e8e3da', 'stroke-width': '0.75'}).forEach(([k,v]) => line.setAttribute(k,v));
+  g.appendChild(line);
+
+  // "TIEBREAKER" label
+  g.appendChild(t({x: cx, y: baseY + 1, 'text-anchor': 'middle', 'font-size': '6.5',
+    fill: '#7a7a8e', 'font-weight': '700', 'letter-spacing': '0.12em',
+    'font-family': 'Barlow Condensed, sans-serif'}, 'TIEBREAKER'));
+
+  // Spread line
+  const champ = picks[62];
+  const spreadAbs = Math.abs(proj.spread);
+  const spreadStr = spreadAbs < 0.5
+    ? 'Pick \'em'
+    : `${champ} by ${spreadAbs.toFixed(1)}`;
+  g.appendChild(t({x: cx, y: baseY + 13, 'text-anchor': 'middle', 'font-size': '10',
+    fill: '#d45f00', 'font-weight': '700',
+    'font-family': 'DM Sans, sans-serif'}, spreadStr));
+
+  // Total line
+  const totalLow  = Math.round(proj.total - proj.total_sigma * 0.5);
+  const totalHigh = Math.round(proj.total + proj.total_sigma * 0.5);
+  g.appendChild(t({x: cx, y: baseY + 25, 'text-anchor': 'middle', 'font-size': '9',
+    fill: '#1e1e2e', 'font-weight': '500',
+    'font-family': 'DM Sans, sans-serif'}, `${Math.round(proj.total)} total pts  ·  range ${totalLow}–${totalHigh}`));
+
+  // Footnote
+  g.appendChild(t({x: cx, y: baseY + 35, 'text-anchor': 'middle', 'font-size': '7',
+    fill: '#7a7a8e', 'font-style': 'italic',
+    'font-family': 'DM Sans, sans-serif'}, 'spread from model \u00b7 total from season scoring averages'));
+
+  svg.appendChild(g);
+
+  // Fade in after champion reveal
+  setTimeout(() => {
+    g.animate([{opacity: 0}, {opacity: 1}], {duration: 400, fill: 'forwards'});
+  }, 2200);
+}
+
 // ── Show result ───────────────────────────────────────────────────────────
 function showResult(evt) {
   resultData = evt;
@@ -1523,6 +1580,9 @@ function showResult(evt) {
     wrap.appendChild(svg);
     addBracketInteractivity(svg);
     revealPickElements(pickEls);
+    if (evt.championship && Object.keys(evt.championship).length) {
+      renderChampionshipProjection(svg, evt.championship, evt.picks);
+    }
   }
 
   if ('startViewTransition' in document && !reducedMotion) {

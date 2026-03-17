@@ -19,14 +19,14 @@ from pydantic import BaseModel
 
 try:
     from .bracket import (load_bracket, bracket_display_slots, picks_display_order)
-    from .model import bradley_terry
+    from .model import bradley_terry, project_championship
     from .optimize import find_bracket
     from .evaluate import test_bracket
     from .simulate import CURRENT_YEAR
     from .scrape import prep_data
 except ImportError:
     from madlab.bracket import (load_bracket, bracket_display_slots, picks_display_order)
-    from madlab.model import bradley_terry
+    from madlab.model import bradley_terry, project_championship
     from madlab.optimize import find_bracket
     from madlab.evaluate import test_bracket
     from madlab.simulate import CURRENT_YEAR
@@ -149,6 +149,13 @@ async def find(req: FindRequest):
                 _on_progress("Rendering bracket…")
                 picks_data = picks_display_order(picks, bracket, req.league)
 
+                # Championship projection
+                # picks[60] and picks[61] = F4 winners (finalists)
+                # picks[62] = champion
+                champ_id  = picks[62]
+                runner_id = picks[60] if picks[61] == champ_id else picks[61]
+                champ_proj = project_championship(champ_id, runner_id, games, pm) if games is not None else {}
+
                 stats = {
                     "win_prob": float(results["win"].mean() * 100),
                     "mean_percentile": float(results["percentile"].mean() * 100),
@@ -156,6 +163,7 @@ async def find(req: FindRequest):
                 }
                 return {
                     "stats": stats,
+                    "championship": champ_proj,
                     "picks": picks_data,
                     "scores": results["score"].tolist(),
                     "percentiles": results["percentile"].tolist(),

@@ -129,21 +129,93 @@ def bradley_terry(
     prob_matrix = prob_matrix.view(np.ndarray)
     prob_matrix.flags.writeable = True
 
-    # Return as a subclass that carries team_ids
+    # Return as a subclass that carries team_ids, sigma, and betas
     result = _ProbMatrix(prob_matrix)
     result.team_ids = all_ids.tolist()
     result.sigma = sigma
+    result.betas = team_betas  # shape (n_teams,) — strength rating per team
     return result
 
 
 class _ProbMatrix(np.ndarray):
-    """np.ndarray subclass that carries team_ids and sigma as attributes."""
+    """np.ndarray subclass that carries team_ids, sigma, and betas."""
     team_ids: list[str]
     sigma: float
+    betas: np.ndarray
 
     def __new__(cls, arr):
         return np.asarray(arr).view(cls)
 
     def __array_finalize__(self, obj):
         self.team_ids = getattr(obj, "team_ids", [])
-        self.sigma = getattr(obj, "sigma", float("nan"))
+        self.sigma    = getattr(obj, "sigma", float("nan"))
+        self.betas    = getattr(obj, "betas", np.array([]))
+
+
+def project_championship(
+    team_a_id: str,
+    team_b_id: str,
+    games: "pl.DataFrame",
+    prob_matrix: _ProbMatrix,
+) -> dict:
+    """
+    Project the championship game total points and spread.
+
+    Spread comes from the Bradley-Terry model (exact).
+    Total comes from each team's season offensive/defensive averages:
+        expected_total = (off_a + def_b + off_b + def_a) / 2
+
+    Returns
+    -------
+    dict with keys:
+      spread        — projected margin (positive = team_a favoured)
+      spread_sigma  — model residual std dev (uncertainty on the spread)
+      total         — projected total points
+      total_sigma   — std dev of total points across both teams' games
+    """
+    # --- Spread from Bradley-Terry ---
+    ids = prob_matrix.team_ids
+    if team_a_id not in ids or team_b_id not in ids:
+        return {}
+    ia = ids.index(team_a_id)
+    ib = ids.index(team_b_id)
+    spread = float(prob_matrix.betas[ia] - prob_matrix.betas[ib])
+
+    # --- Total from season scoring averages ---
+    g = games.filter(
+        (pl.col("home_id") != "NA") & (pl.col("away_id") != "NA")
+    ).with_columns([
+        pl.col("home_score").cast(pl.Float64),
+        pl.col("away_score").cast(pl.Float64),
+    ])
+
+    def team_stats(tid: str):
+        as_home = g.filter(pl.col("home_id") == tid)
+        as_away = g.filter(pl.col("away_id") == tid)
+        scored  = pl.concat([as_home["home_score"], as_away["away_score"]])
+        allowed = pl.concat([as_home["away_score"], as_away["home_score"]])
+        totals  = pl.concat([as_home["home_score"] + as_home["away_score"],
+                             as_away["home_score"] + as_away["away_score"]])
+        return {
+            "off": float(scored.mean()) if len(scored) else 70.0,
+            "def": float(allowed.mean()) if len(allowed) else 70.0,
+            "total_std": float(totals.std()) if len(totals) > 1 else 10.0,
+        }
+
+    sa = team_stats(team_a_id)
+    sb = team_stats(team_b_id)
+
+    # Projected scores: blend each team's offense against opponent's defense
+    proj_a = (sa["off"] + sb["def"]) / 2
+    proj_b = (sb["off"] + sa["def"]) / 2
+    total  = proj_a + proj_b
+
+    # Total uncertainty: average of both teams' game-total std devs
+    total_sigma = (sa["total_std"] + sb["total_std"]) / 2
+
+    return {
+        "spread":       round(spread, 1),
+        "spread_sigma": round(prob_matrix.sigma, 1),
+        "total":        round(total, 1),
+        "total_sigma":  round(total_sigma, 1),
+    }
