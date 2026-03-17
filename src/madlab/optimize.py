@@ -82,82 +82,91 @@ def find_bracket(
     if bonus_seed is None:
         bonus_seed = [0] * 16
 
-    # 1. Generate candidate brackets (63, num_candidates)
-    candidates = sim_bracket(
-        bracket_empty, prob_matrix=prob_matrix, prob_source=prob_source,
-        league=league, year=year, num_reps=num_candidates, rng=rng,
-    )
-
     def _emit(msg: str) -> None:
         if print_progress:
             print(msg)
         if on_progress:
             on_progress(msg)
 
+    # 1. Generate candidate brackets (63, num_candidates)
     _emit(f"Generating {num_candidates} candidate brackets…")
-
-    # 2. Simulate pool opponents: (63, num_sims * pool_size)
-    pool = sim_bracket(
-        bracket_empty, prob_source=pool_source,
-        league=league, year=year, home_teams=pool_bias,
-        num_reps=num_sims * pool_size, rng=rng,
-    )
-
-    # 3. Simulate tournament outcomes: (63, num_sims)
-    outcomes = sim_bracket(
+    candidates = sim_bracket(
         bracket_empty, prob_matrix=prob_matrix, prob_source=prob_source,
-        league=league, year=year, num_reps=num_sims, rng=rng,
+        league=league, year=year, num_reps=num_candidates, rng=rng,
     )
+
+    # 2. Determine chunk size to cap peak memory at ~400 MB.
+    #    Each pool bracket = 63 team-ID strings ≈ 100 bytes in numpy unicode.
+    _BUDGET_BYTES = 400 * 1024 * 1024
+    _bytes_per_bracket = 63 * 100
+    _max_pool_per_chunk = max(1, _BUDGET_BYTES // (_bytes_per_bracket * pool_size))
+    sim_chunk = min(num_sims, max(1, _max_pool_per_chunk))
 
     _emit(f"Simulating {num_sims} pools of {pool_size} opponents…")
-    _emit(f"Scoring {num_sims * (num_candidates + pool_size):,} brackets…")
 
-    # 4. Vectorized scoring: candidates (63, num_candidates) vs outcomes (63, num_sims)
-    # -> candidate_scores: (num_candidates, num_sims)
-    candidate_scores = score_bracket(
-        bracket_empty, candidates, outcomes,
-        bonus_round=bonus_round, bonus_seed=bonus_seed, bonus_combine=bonus_combine,
-    )  # (num_candidates, num_sims)
+    # Accumulators
+    candidate_scores = np.zeros((num_candidates, num_sims))
+    pool_max = np.full(num_sims, -np.inf)   # max pool score per simulation
+    pool_all = np.zeros((pool_size, num_sims))  # only needed for percentile
 
-    # 5. Score pool brackets per simulation
-    # pool: (63, num_sims * pool_size) -> we need (pool_size, num_sims)
-    pool_scores = np.empty((pool_size, num_sims))
-    for i in range(num_sims):
-        pool_slice = pool[:, i * pool_size:(i + 1) * pool_size]
-        s = score_bracket(
-            bracket_empty, pool_slice, outcomes[:, i],
+    n_chunks = (num_sims + sim_chunk - 1) // sim_chunk
+    for chunk_idx, start in enumerate(range(0, num_sims, sim_chunk)):
+        n = min(sim_chunk, num_sims - start)
+
+        if n_chunks > 1:
+            _emit(f"Scoring chunk {chunk_idx + 1}/{n_chunks}…")
+
+        # Tournament outcomes for this chunk: (63, n)
+        outcomes_chunk = sim_bracket(
+            bracket_empty, prob_matrix=prob_matrix, prob_source=prob_source,
+            league=league, year=year, num_reps=n, rng=rng,
+        )
+
+        # Score all candidates against chunk outcomes: (num_candidates, n)
+        candidate_scores[:, start:start + n] = score_bracket(
+            bracket_empty, candidates, outcomes_chunk,
             bonus_round=bonus_round, bonus_seed=bonus_seed, bonus_combine=bonus_combine,
         )
-        pool_scores[:, i] = np.squeeze(s) if s.ndim > 1 else s
 
-    # 6. Select best candidate by criterion
-    # all_scores shape: (pool_size + num_candidates, num_sims)
-    all_scores = np.vstack([pool_scores, candidate_scores])
+        # Pool brackets for this chunk: (63, n * pool_size)
+        pool_chunk = sim_bracket(
+            bracket_empty, prob_source=pool_source,
+            league=league, year=year, home_teams=pool_bias,
+            num_reps=n * pool_size, rng=rng,
+        )
 
+        # Score pool per simulation within chunk
+        for j in range(n):
+            pool_j = pool_chunk[:, j * pool_size:(j + 1) * pool_size]
+            s = score_bracket(
+                bracket_empty, pool_j, outcomes_chunk[:, j],
+                bonus_round=bonus_round, bonus_seed=bonus_seed, bonus_combine=bonus_combine,
+            )
+            s_flat = np.squeeze(s) if s.ndim > 1 else s
+            pool_max[start + j] = float(np.max(s_flat))
+            if criterion == "percentile":
+                pool_all[:, start + j] = s_flat
+
+        del pool_chunk, outcomes_chunk  # free memory before next chunk
+
+    _emit(f"Selecting best bracket…")
+
+    # 3. Select best candidate by criterion
     if criterion == "percentile":
-        # For each candidate, compute mean percentile rank across simulations
+        all_scores = np.vstack([pool_all, candidate_scores])  # (pool_size + num_candidates, num_sims)
         n_total = all_scores.shape[0]
-        # ranks[i, j] = rank of all_scores[i, j] within column j (1-based, ties = max)
-        # Efficient: argsort twice
         ranks = np.empty_like(all_scores, dtype=float)
         for j in range(num_sims):
             col = all_scores[:, j]
-            order = np.argsort(col)
-            ranks_col = np.empty(n_total)
-            ranks_col[order] = np.arange(1, n_total + 1)
-            # ties: use max rank
-            for k in range(n_total):
-                ranks_col[k] = (col <= col[k]).sum()
-            ranks[:, j] = ranks_col
-        percentiles = ranks[pool_size:] / n_total  # (num_candidates, num_sims)
+            ranks[:, j] = np.array([(col <= v).sum() for v in col], dtype=float)
+        percentiles = ranks[pool_size:] / n_total
         best_idx = int(np.argmax(percentiles.mean(axis=1)))
 
     elif criterion == "score":
         best_idx = int(np.argmax(candidate_scores.mean(axis=1)))
 
     elif criterion == "win":
-        pool_max = pool_scores.max(axis=0)  # (num_sims,)
-        wins = candidate_scores >= pool_max[None, :]  # (num_candidates, num_sims)
+        wins = candidate_scores >= pool_max[None, :]
         best_idx = int(np.argmax(wins.mean(axis=1)))
 
     return candidates[:, best_idx].tolist()
