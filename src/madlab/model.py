@@ -9,10 +9,27 @@ Improvements over R version:
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import polars as pl
-from scipy import sparse, stats
-from sklearn.linear_model import RidgeCV
+
+
+def _ridge_cv(X: np.ndarray, y: np.ndarray, alphas: np.ndarray) -> np.ndarray:
+    """Ridge regression with LOO-CV via SVD. Replicates sklearn RidgeCV behaviour."""
+    U, s, Vt = np.linalg.svd(X, full_matrices=False)
+    Uy = U.T @ y
+    s2 = s ** 2
+    best_alpha, best_loss = alphas[0], np.inf
+    for alpha in alphas:
+        d = s2 / (s2 + alpha)
+        y_hat = U @ (d * Uy)
+        h = np.sum(U ** 2 * d, axis=1)
+        loo = (y - y_hat) / (1 - h)
+        loss = np.mean(loo ** 2)
+        if loss < best_loss:
+            best_loss, best_alpha = loss, alpha
+    return Vt.T @ ((s / (s2 + best_alpha)) * Uy)
 
 
 def bradley_terry(
@@ -78,16 +95,9 @@ def bradley_terry(
     team_cols = np.concatenate([home_col_indices, away_col_indices])
     team_vals = np.concatenate([np.ones(n_games), -np.ones(n_games)])
 
-    X = sparse.csr_matrix(
-        (
-            np.concatenate([np.ones(len(home_indicator_rows)), team_vals]),
-            (
-                np.concatenate([home_indicator_rows, team_rows]),
-                np.concatenate([np.zeros(len(home_indicator_rows), dtype=int), team_cols]),
-            ),
-        ),
-        shape=(n_games, n_cols),
-    )
+    X = np.zeros((n_games, n_cols), dtype=np.float64)
+    X[home_indicator_rows, 0] = 1.0
+    X[team_rows, team_cols] = team_vals
 
     # Build response: home score minus away score
     y = home_scores - away_scores
@@ -99,12 +109,9 @@ def bradley_terry(
     if mov_cap is not None:
         y = np.clip(y, -mov_cap, mov_cap)
 
-    # Fit ridge regression with LOO-CV (faster than 100-lambda glmnet grid)
-    # alphas correspond to lambda*n in sklearn vs lambda in R glmnet
+    # Fit ridge regression with LOO-CV via SVD (pure numpy, replicates sklearn RidgeCV)
     alphas = np.exp(np.linspace(np.log(n_games * np.exp(5)), np.log(n_games * np.exp(-10)), 100))
-    ridge = RidgeCV(alphas=alphas, fit_intercept=False)
-    ridge.fit(X, y)
-    beta = ridge.coef_  # [home_advantage, beta_team_0, ..., beta_team_{n-1}]
+    beta = _ridge_cv(X, y, alphas)
 
     # Estimate score differential std-dev
     y_pred = X @ beta
@@ -114,8 +121,9 @@ def bradley_terry(
     team_betas = beta[1:]
     point_spread = team_betas[:, None] - team_betas[None, :]  # shape (n_teams, n_teams)
 
-    # Convert to win probabilities via normal CDF
-    prob_matrix = stats.norm.cdf(point_spread, scale=sigma)
+    # Convert to win probabilities via normal CDF: 0.5 * erfc(-x / (sigma * sqrt2))
+    _erfc = np.frompyfunc(math.erfc, 1, 1)
+    prob_matrix = (0.5 * _erfc(-point_spread / (sigma * math.sqrt(2)))).astype(float)
 
     # Attach metadata as custom attributes (numpy structured approach)
     prob_matrix = prob_matrix.view(np.ndarray)
