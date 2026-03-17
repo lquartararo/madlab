@@ -10,6 +10,8 @@ using NumPy broadcasting (no Python loop over simulations).
 
 from __future__ import annotations
 
+import time
+
 import numpy as np
 
 from .bracket import ROUND_OF_ROW
@@ -102,37 +104,43 @@ def find_bracket(
     _max_pool_per_chunk = max(1, _BUDGET_BYTES // (_bytes_per_bracket * pool_size))
     sim_chunk = min(num_sims, max(1, _max_pool_per_chunk))
 
-    _emit(f"Simulating {num_sims} pools of {pool_size} opponents…")
+    _emit(f"Simulating {num_sims:,} tournaments…")
 
     # Accumulators
     candidate_scores = np.zeros((num_candidates, num_sims))
-    pool_max = np.full(num_sims, -np.inf)   # max pool score per simulation
+    pool_max = np.full(num_sims, -np.inf)
     pool_all = np.zeros((pool_size, num_sims))  # only needed for percentile
 
-    n_chunks = (num_sims + sim_chunk - 1) // sim_chunk
-    for chunk_idx, start in enumerate(range(0, num_sims, sim_chunk)):
+    emit_every = max(1, num_sims // 50)   # ~50 progress updates total
+    scoring_start = time.perf_counter()
+
+    def _fmt_remaining(done: int) -> str:
+        elapsed = time.perf_counter() - scoring_start
+        if done < 2 or elapsed < 0.5:
+            return ""
+        rate = done / elapsed
+        secs = int((num_sims - done) / rate)
+        if secs < 60:
+            return f" · ~{secs}s remaining"
+        return f" · ~{secs // 60}m {secs % 60}s remaining"
+
+    for start in range(0, num_sims, sim_chunk):
         n = min(sim_chunk, num_sims - start)
 
-        # Tournament outcomes for this chunk: (63, n)
         outcomes_chunk = sim_bracket(
             bracket_empty, prob_matrix=prob_matrix, prob_source=prob_source,
             league=league, year=year, num_reps=n, rng=rng,
         )
-
-        # Score all candidates against chunk outcomes: (num_candidates, n)
         candidate_scores[:, start:start + n] = score_bracket(
             bracket_empty, candidates, outcomes_chunk,
             bonus_round=bonus_round, bonus_seed=bonus_seed, bonus_combine=bonus_combine,
         )
-
-        # Pool brackets for this chunk: (63, n * pool_size)
         pool_chunk = sim_bracket(
             bracket_empty, prob_source=pool_source,
             league=league, year=year, home_teams=pool_bias,
             num_reps=n * pool_size, rng=rng,
         )
 
-        # Score pool per simulation within chunk
         for j in range(n):
             pool_j = pool_chunk[:, j * pool_size:(j + 1) * pool_size]
             s = score_bracket(
@@ -144,8 +152,11 @@ def find_bracket(
             if criterion == "percentile":
                 pool_all[:, start + j] = s_flat
 
-        del pool_chunk, outcomes_chunk  # free memory before next chunk
-        _emit(f"Scored {min(start + n, num_sims):,}/{num_sims:,} pools…")
+            done = start + j + 1
+            if done % emit_every == 0 or done == num_sims:
+                _emit(f"Simulated {done:,}/{num_sims:,} tournaments{_fmt_remaining(done)}")
+
+        del pool_chunk, outcomes_chunk
 
     _emit(f"Selecting best bracket…")
 

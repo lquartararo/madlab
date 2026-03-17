@@ -727,13 +727,13 @@ const STAGES = [
   { re: /rendering/i,   pct: 97, step: '6 / 6' },
 ];
 
-const POOLS_RE = /Scored ([\d,]+)\/([\d,]+) pools/;
-function parsePoolsProgress(msg) {
-  const m = POOLS_RE.exec(msg);
+const SIM_RE = /Simulated ([\d,]+)\/([\d,]+) tournaments/;
+function parseSimProgress(msg) {
+  const m = SIM_RE.exec(msg);
   if (!m) return null;
-  const done = parseInt(m[1].replace(/,/g, ''), 10);
+  const done  = parseInt(m[1].replace(/,/g, ''), 10);
   const total = parseInt(m[2].replace(/,/g, ''), 10);
-  const frac = total > 0 ? done / total : 0;
+  const frac  = total > 0 ? done / total : 0;
   return { pct: Math.round(45 + frac * 43), step: '3 / 6' }; // 45% → 88%
 }
 
@@ -1260,8 +1260,7 @@ async function findBracket() {
 function handleEvent(evt) {
   if (evt.type === 'progress') {
     document.getElementById('status-text').textContent = evt.message;
-    const pools = parsePoolsProgress(evt.message);
-    const stage = pools || STAGES.find(s => s.re.test(evt.message));
+    const stage = parseSimProgress(evt.message) || STAGES.find(s => s.re.test(evt.message));
     if (stage) setProgress(stage.pct, stage.step);
   } else if (evt.type === 'result') {
     setProgress(100, '');
