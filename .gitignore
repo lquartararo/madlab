@@ -11,4 +11,3 @@ wheels/
 
 # Test cache
 .pytest_cache/
-CLAUDE.md

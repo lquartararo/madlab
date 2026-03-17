@@ -1,7 +1,7 @@
 [project]
 name = "madlab"
 version = "1.2026.0"
-description = "A numerical computing environment for March Madness"
+description = "Beat your March Madness pool with statistical bracket optimization"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
