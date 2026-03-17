@@ -298,7 +298,7 @@ def _scrape_teams(espn_league: str) -> pl.DataFrame:
         resp = client.get(url)
         resp.raise_for_status()
 
-    soup = BeautifulSoup(resp.text, "lxml")
+    soup = BeautifulSoup(resp.text, "html.parser")
     sections = soup.select("section.TeamLinks")
 
     names, ids = [], []
@@ -352,7 +352,7 @@ async def _scrape_team_games(
     except Exception:
         return empty
 
-    soup = BeautifulSoup(resp.text, "lxml")
+    soup = BeautifulSoup(resp.text, "html.parser")
     rows = soup.select(".Table__TBODY tr")
 
     game_ids, pri_ids, pri_scores, oth_ids, oth_scores, locations, ots = (

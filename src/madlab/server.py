@@ -8,9 +8,7 @@ Run with:
 from __future__ import annotations
 
 import asyncio
-import io
 import json
-import re
 from pathlib import Path
 from typing import AsyncIterator
 
@@ -20,25 +18,19 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel
 
 try:
-    from .bracket import (load_bracket, draw_bracket,
-                          bracket_display_slots, picks_display_order)
+    from .bracket import (load_bracket, bracket_display_slots, picks_display_order)
     from .model import bradley_terry
     from .optimize import find_bracket
     from .evaluate import test_bracket
     from .simulate import CURRENT_YEAR
     from .scrape import prep_data
 except ImportError:
-    from madlab.bracket import (load_bracket, draw_bracket,
-                                      bracket_display_slots, picks_display_order)
+    from madlab.bracket import (load_bracket, bracket_display_slots, picks_display_order)
     from madlab.model import bradley_terry
     from madlab.optimize import find_bracket
     from madlab.evaluate import test_bracket
     from madlab.simulate import CURRENT_YEAR
     from madlab.scrape import prep_data
-
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 
 app = FastAPI(title="madlab")
 
@@ -49,15 +41,7 @@ app = FastAPI(title="madlab")
 _TEMPLATE_PATH = Path(__file__).parent / "templates" / "index.html"
 
 
-def _fig_to_svg(fig: plt.Figure) -> str:
-    buf = io.StringIO()
-    fig.savefig(buf, format="svg", bbox_inches="tight", transparent=True)
-    svg = buf.getvalue()
-    svg = re.sub(r"<\?xml[^>]*\?>", "", svg)
-    svg = re.sub(r"<!DOCTYPE[^>]*>", "", svg)
-    svg = svg.strip()
-    svg = re.sub(r'width="[^"]*"', 'width="100%"', svg, count=1)
-    svg = re.sub(r'\s*height="[^"]*"', '', svg, count=1)
+
     return svg
 
 
@@ -99,17 +83,7 @@ async def bracket_json(league: str = Query("men"), year: int = Query(CURRENT_YEA
     return {"league": league, "year": year, "slots": slots}
 
 
-@app.get("/api/bracket/svg")
-async def bracket_svg(league: str = Query("men"), year: int = Query(CURRENT_YEAR)):
-    def _render():
-        bracket = load_bracket(league, year)
-        fig = draw_bracket(bracket, league=league)
-        svg = _fig_to_svg(fig)
-        plt.close(fig)
-        return svg
 
-    svg = await asyncio.to_thread(_render)
-    return {"svg": svg}
 
 
 class FindRequest(BaseModel):

@@ -11,7 +11,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import matplotlib.pyplot as plt
+try:
+    import matplotlib.pyplot as plt
+    _MPL_AVAILABLE = True
+except ImportError:
+    plt = None
+    _MPL_AVAILABLE = False
 import numpy as np
 
 
@@ -260,7 +265,7 @@ def draw_bracket(
     text_size: float = 6.5,
     figsize: tuple[float, float] = (24, 14),
     dpi: int = 100,
-) -> plt.Figure:
+):
     """
     Draw the NCAA tournament bracket using matplotlib.
 
@@ -276,6 +281,8 @@ def draw_bracket(
     -------
     matplotlib Figure
     """
+    if not _MPL_AVAILABLE:
+        raise ImportError("matplotlib is required for draw_bracket(). Install it with: pip install matplotlib")
     teams_df = load_teams(league)
     id_to_name: dict[str, str] = dict(
         zip(teams_df["id"].cast(str).to_list(), teams_df["name"].to_list())
