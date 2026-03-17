@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from marchmadness.bracket import (
+from madlab.bracket import (
     _fold_indices,
     _unfold_indices,
     FOLD_TO_MATCHUP,
@@ -15,7 +15,7 @@ from marchmadness.bracket import (
     load_bracket,
     input_bracket_filled,
 )
-from marchmadness.evaluate import score_bracket
+from madlab.evaluate import score_bracket
 
 
 def test_fold_unfold_roundtrip():

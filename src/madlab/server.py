@@ -2,7 +2,7 @@
 FastAPI web server — replaces Streamlit webapp.
 
 Run with:
-    uv run uvicorn marchmadness.server:app --reload --port 8000
+    uv run uvicorn madlab.server:app --reload --port 8000
 """
 
 from __future__ import annotations
@@ -28,13 +28,13 @@ try:
     from .simulate import CURRENT_YEAR
     from .scrape import prep_data
 except ImportError:
-    from marchmadness.bracket import (load_bracket, draw_bracket,
+    from madlab.bracket import (load_bracket, draw_bracket,
                                       bracket_display_slots, picks_display_order)
-    from marchmadness.model import bradley_terry
-    from marchmadness.optimize import find_bracket
-    from marchmadness.evaluate import test_bracket
-    from marchmadness.simulate import CURRENT_YEAR
-    from marchmadness.scrape import prep_data
+    from madlab.model import bradley_terry
+    from madlab.optimize import find_bracket
+    from madlab.evaluate import test_bracket
+    from madlab.simulate import CURRENT_YEAR
+    from madlab.scrape import prep_data
 
 import matplotlib
 matplotlib.use("Agg")
@@ -63,7 +63,7 @@ def _fig_to_svg(fig: plt.Figure) -> str:
 
 def _load_games_safe(league: str, year: int):
     try:
-        from marchmadness.bracket import load_games, DATA_DIR
+        from madlab.bracket import load_games, DATA_DIR
         import polars as pl
         path = DATA_DIR / f"games.{league}.{year}.parquet"
         if not path.exists():

@@ -3,10 +3,10 @@
 import numpy as np
 import pytest
 
-from marchmadness.bracket import load_bracket
-from marchmadness.simulate import sim_bracket
-from marchmadness.model import bradley_terry
-from marchmadness.bracket import load_games
+from madlab.bracket import load_bracket
+from madlab.simulate import sim_bracket
+from madlab.model import bradley_terry
+from madlab.bracket import load_games
 
 
 @pytest.fixture(scope="module")

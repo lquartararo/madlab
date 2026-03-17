@@ -8,7 +8,7 @@ Beat your March Madness pool with statistical bracket optimization. madlab scrap
 git clone https://github.com/lquartararo/madlab
 cd madlab
 uv sync
-uv run uvicorn marchmadness.server:app --port 8000
+uv run uvicorn madlab.server:app --port 8000
 ```
 
 Then open [http://localhost:8000](http://localhost:8000).
@@ -32,7 +32,7 @@ The app auto-loads the current year's bracket, lets you tune pool size, scoring 
 
 ```python
 import numpy as np
-from marchmadness import (
+from madlab import (
     load_bracket, load_games,
     bradley_terry, find_bracket, test_bracket,
 )
@@ -82,7 +82,7 @@ ESPN's Gambit API requires a challenge ID that changes each year. The scraper tr
 4. Register it once before scraping:
 
 ```python
-from marchmadness import register_challenge_id
+from madlab import register_challenge_id
 register_challenge_id(2027, "men",   259)
 register_challenge_id(2027, "women", 260)
 ```
@@ -90,7 +90,7 @@ register_challenge_id(2027, "women", 260)
 ### Step 2 — Run `prep_data`
 
 ```python
-from marchmadness import prep_data, validate_bracket, bracket_set_first_four, save_bracket
+from madlab import prep_data, validate_bracket, bracket_set_first_four, save_bracket
 
 data = prep_data(year=2027, league="men", verbose=True)
 bracket = data["bracket"]
@@ -202,7 +202,7 @@ bracket_set_first_four(bracket, index, "id1/id2") # fix a First Four slot
 ### Home-team bias
 
 ```python
-from marchmadness import add_home_bias
+from madlab import add_home_bias
 adjusted_pred = add_home_bias(["UNC", "Duke"], league="men", year=2026)
 ```
 
@@ -213,7 +213,7 @@ Adds +¾ to the log-odds of the conditional win probability for each listed team
 If you have filled out a bracket on ESPN and want to evaluate it:
 
 ```python
-from marchmadness import input_bracket_filled
+from madlab import input_bracket_filled
 # Convert 63 picks in ESPN/pool reading order -> internal seed order
 my_bracket = input_bracket_filled(my_picks_in_espn_order)
 ```

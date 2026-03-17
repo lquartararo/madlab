@@ -5,10 +5,10 @@ Port of the R package mRchmadness by Eli Shayer and Scott Powers.
 
 Quick start
 -----------
->>> from marchmadness.bracket import load_bracket, load_games
->>> from marchmadness.model import bradley_terry
->>> from marchmadness.optimize import find_bracket
->>> from marchmadness.evaluate import test_bracket
+>>> from madlab.bracket import load_bracket, load_games
+>>> from madlab.model import bradley_terry
+>>> from madlab.optimize import find_bracket
+>>> from madlab.evaluate import test_bracket
 
 >>> games = load_games("men", 2025)
 >>> prob_matrix = bradley_terry(games)
