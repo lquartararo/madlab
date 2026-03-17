@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>madlab · 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+  <style>
+    /* ── Tokens ─────────────────────────────────────────────────────────── */
+    :root {
+      --bg:            oklch(98.5% 0.007 80);
+      --surface:       oklch(100% 0 0);
+      --ink:           oklch(16% 0.018 265);
+      --ink-2:         oklch(42% 0.016 265);
+      --ink-3:         oklch(64% 0.010 265);
+      --accent:        oklch(62% 0.22 38);
+      --accent-hover:  oklch(54% 0.22 38);
+      --accent-tint:   oklch(96% 0.04 38);
+      --error:         oklch(55% 0.22 15);
+      --error-tint:    oklch(96% 0.04 15);
+      --rule:          oklch(90% 0.010 80);
+      --rule-strong:   oklch(82% 0.014 80);
+      --header-bg:     oklch(16% 0.018 265);
+      --header-ink:    oklch(97% 0.005 80);
+      --header-muted:  oklch(50% 0.012 265);
+      --shadow-sm:     0 1px 3px oklch(0% 0 0 / 0.08), 0 1px 2px oklch(0% 0 0 / 0.04);
+
+      --font-display:  'Barlow Condensed', sans-serif;
+      --font-body:     'DM Sans', sans-serif;
+
+      --r-sm: 4px;
+      --r-md: 8px;
+    }
+
+    /* ── Reset ───────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+
+    /* ── Focus ───────────────────────────────────────────────────────────── */
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    /* ── Header ──────────────────────────────────────────────────────────── */
+    header {
+      background: var(--header-bg);
+      color: var(--header-ink);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      height: 56px;
+      border-bottom: 3px solid var(--accent);
+    }
+
+    .wordmark {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.5rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--header-ink);
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .wordmark span { color: var(--accent); }
+
+    .header-rule {
+      width: 1px;
+      height: 24px;
+      background: var(--header-muted);
+      flex-shrink: 0;
+    }
+
+    .league-toggle {
+      display: flex;
+      gap: 2px;
+      background: oklch(22% 0.015 265);
+      border-radius: var(--r-sm);
+      padding: 2px;
+    }
+
+    .league-toggle button {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.875rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border: none;
+      background: transparent;
+      color: var(--header-muted);
+      padding: 4px 14px;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .league-toggle button.active {
+      background: var(--accent);
+      color: var(--surface);
+    }
+
+    header nav {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    header nav a {
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--header-muted);
+      text-decoration: none;
+      letter-spacing: 0.02em;
+      transition: color 0.15s;
+    }
+
+    header nav a:hover { color: var(--header-ink); }
+
+    /* ── Controls bar ────────────────────────────────────────────────────── */
+    .controls-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .controls-main {
+      display: flex;
+      align-items: center;
+      padding: 0 2rem;
+      min-height: 56px;
+    }
+
+    .ctrl-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 1.25rem;
+      border-right: 1px solid var(--rule);
+      height: 56px;
+    }
+
+    .ctrl-group:first-child { padding-left: 0; }
+
+    .ctrl-label {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      white-space: nowrap;
+    }
+
+    .ctrl-group select,
+    .ctrl-group input[type="number"] {
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--ink);
+      background: transparent;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    .ctrl-group select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0 center;
+      padding-right: 14px;
+    }
+
+    .ctrl-group input[type="number"] {
+      width: 60px;
+      text-align: right;
+    }
+
+    .ctrl-group input[type="number"]::-webkit-inner-spin-button,
+    .ctrl-group input[type="number"]::-webkit-outer-spin-button { opacity: 1; }
+
+    .ctrl-spacer { flex: 1; }
+
+    .ctrl-advanced-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-body);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--ink-3);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0 1.25rem;
+      height: 56px;
+      border-left: 1px solid var(--rule);
+      transition: color 0.15s;
+      white-space: nowrap;
+    }
+
+    .ctrl-advanced-toggle:hover { color: var(--ink); }
+
+    .ctrl-advanced-toggle .chevron {
+      display: inline-block;
+      font-size: 0.625rem;
+      transition: transform 0.2s ease;
+    }
+
+    .ctrl-advanced-toggle.open .chevron { transform: rotate(180deg); }
+
+    /* ── Advanced panel ──────────────────────────────────────────────────── */
+    .controls-advanced {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows 0.25s ease;
+      border-top: 1px solid var(--rule);
+    }
+
+    .controls-advanced.open { grid-template-rows: 1fr; }
+
+    .controls-advanced-inner {
+      overflow: hidden;
+      display: flex;
+      padding: 0 2rem;
+    }
+
+    .controls-advanced-inner .ctrl-group { height: 48px; }
+
+    /* ── Find button ─────────────────────────────────────────────────────── */
+    .find-btn-wrap {
+      padding: 0 0 0 1.25rem;
+      border-left: 1px solid var(--rule);
+      display: flex;
+      align-items: center;
+      height: 56px;
+    }
+
+    #find-btn {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: var(--accent);
+      color: var(--surface);
+      border: none;
+      border-radius: var(--r-sm);
+      padding: 10px 24px;
+      cursor: pointer;
+      white-space: nowrap;
+      min-width: 200px;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    #find-btn:hover:not(:disabled) { background: var(--accent-hover); }
+    #find-btn:active:not(:disabled) { transform: translateY(1px); }
+
+    #find-btn:disabled {
+      background: var(--rule-strong);
+      color: var(--ink-3);
+      cursor: not-allowed;
+    }
+
+    /* ── Status bar ──────────────────────────────────────────────────────── */
+    #status-bar {
+      background: var(--accent-tint);
+      border-bottom: 1px solid oklch(88% 0.08 38);
+      display: none;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #status-bar.visible { display: flex; }
+
+    #status-bar.error {
+      background: var(--error-tint);
+      border-bottom-color: oklch(85% 0.08 15);
+    }
+
+    #status-bar.error .status-spinner { display: none; }
+    #status-bar.error #status-text    { color: var(--error); }
+    #status-bar.error #status-step    { display: none; }
+    #status-bar.error .progress-track { display: none; }
+
+    .status-inner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      height: 36px;
+      padding: 0 2rem;
+    }
+
+    .status-spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid oklch(82% 0.10 38);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #status-text {
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--accent-hover);
+    }
+
+    #status-step {
+      margin-left: auto;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.8125rem;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    /* Progress track */
+    .progress-track {
+      height: 3px;
+      background: oklch(90% 0.07 38);
+      flex-shrink: 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      transition: width 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .progress-fill { transition: none; }
+    }
+
+    /* ── Stats strip ─────────────────────────────────────────────────────── */
+    #stats-strip {
+      display: none;
+      background: var(--surface);
+      border-bottom: 1px solid var(--rule);
+    }
+
+    #stats-strip.visible { display: block; }
+
+    .stats-inner {
+      display: flex;
+      align-items: stretch;
+    }
+
+    /* Primary stat: Win Probability gets more visual weight */
+    .stat-block {
+      flex: 1;
+      padding: 18px 2rem;
+      border-right: 1px solid var(--rule);
+    }
+
+    .stat-block:last-child { border-right: none; }
+
+    .stat-block--primary {
+      flex: 1.5;
+      border-left: 3px solid var(--accent);
+      padding-left: calc(2rem - 3px);
+    }
+
+    .stat-label {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 2.5rem;
+      line-height: 1;
+      color: var(--ink);
+      display: block;
+    }
+
+    .stat-block--primary .stat-value { color: var(--accent); }
+
+    .stat-context {
+      font-size: 0.75rem;
+      color: var(--ink-3);
+      margin-top: 5px;
+    }
+
+    /* ── Tabs ────────────────────────────────────────────────────────────── */
+    .tabs-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--rule);
+      padding: 0 2rem;
+      display: flex;
+    }
+
+    .tab-btn {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.875rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      padding: 14px 20px 11px;
+      cursor: pointer;
+      color: var(--ink-3);
+      transition: color 0.15s, border-color 0.15s;
+      margin-bottom: -1px;
+    }
+
+    .tab-btn:hover:not(.locked) { color: var(--ink); }
+    .tab-btn.active { color: var(--ink); border-bottom-color: var(--accent); }
+
+    .tab-btn.locked {
+      color: var(--rule-strong);
+      cursor: not-allowed;
+    }
+
+    /* ── Panels ──────────────────────────────────────────────────────────── */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ── Bracket area ────────────────────────────────────────────────────── */
+    .bracket-area {
+      padding: 1.5rem 2rem 3rem;
+    }
+
+    .bracket-wrap {
+      background: var(--surface);
+      border: 1px solid var(--rule);
+      overflow-x: auto;
+      /* SVG viewBox is 1800px wide — set a min so cards stay readable */
+      min-width: 100%;
+      border-radius: var(--r-md);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .bracket-wrap svg { display: block; min-width: 1100px; }
+
+    /* ── Path tracing (hover) ────────────────────────────────────────────── */
+    g[data-team-id] { cursor: pointer; }
+
+    svg.tracing g[data-picked="1"]:not(.path-active) {
+      opacity: 0.14;
+      transition: opacity 0.14s ease, filter 0.14s ease;
+    }
+
+    svg.tracing g[data-picked="1"].path-active {
+      filter: drop-shadow(0 0 6px rgba(212, 95, 0, 0.65));
+      transition: opacity 0.14s ease, filter 0.14s ease;
+    }
+
+    /* Champion is always prominent */
+    svg.tracing g[data-champ="1"] { opacity: 1 !important; }
+
+    /* ── View Transitions ────────────────────────────────────────────────── */
+    .bracket-wrap { view-transition-name: bracket-panel; }
+
+    @keyframes vt-bracket-out {
+      from { opacity: 1; transform: translateY(0) scale(1); }
+      to   { opacity: 0; transform: translateY(-10px) scale(0.99); }
+    }
+    @keyframes vt-bracket-in {
+      from { opacity: 0; transform: translateY(8px) scale(0.99); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    ::view-transition-old(bracket-panel) {
+      animation: 0.22s ease-in both vt-bracket-out;
+    }
+    ::view-transition-new(bracket-panel) {
+      animation: 0.28s ease-out 0.06s both vt-bracket-in;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      ::view-transition-old(bracket-panel),
+      ::view-transition-new(bracket-panel) { animation: none; }
+    }
+
+    /* Loading / empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 6rem 2rem;
+      gap: 1rem;
+      color: var(--ink-3);
+    }
+
+    .empty-state p {
+      font-size: 0.9375rem;
+      text-align: center;
+      max-width: 320px;
+      line-height: 1.6;
+    }
+
+    /* ── Charts ──────────────────────────────────────────────────────────── */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--rule);
+      border-radius: var(--r-md);
+      padding: 1.25rem 1.5rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .chart-card h3 {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.875rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink-2);
+      margin-bottom: 1rem;
+    }
+
+    .chart-card canvas { display: block; }
+
+    /* ── Animation ───────────────────────────────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-up { animation: fadeUp 0.35s ease forwards; }
+
+    /* ── Responsive ──────────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .charts-grid { grid-template-columns: 1fr; }
+      .controls-main { flex-wrap: wrap; }
+      .ctrl-group { border-right: none; border-bottom: 1px solid var(--rule); }
+      .find-btn-wrap { border-left: none; padding: 0.75rem 0; width: 100%; }
+      #find-btn { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────────────────── -->
+<header>
+  <span class="wordmark">March<span>Madness</span></span>
+  <div class="header-rule"></div>
+  <div class="league-toggle" role="group" aria-label="League">
+    <button class="active" data-league="men">Men</button>
+    <button data-league="women">Women</button>
+  </div>
+  <nav>
+    <a href="https://github.com/lquartararo/madlab" target="_blank" rel="noopener">GitHub</a>
+  </nav>
+</header>
+
+<!-- ── Controls ────────────────────────────────────────────────────────── -->
+<div class="controls-bar" role="toolbar" aria-label="Settings">
+  <div class="controls-main">
+    <div class="ctrl-group">
+      <label class="ctrl-label" for="ctrl-pool">Pool Size</label>
+      <input type="number" id="ctrl-pool" value="30" min="2" max="200" step="1">
+    </div>
+    <div class="ctrl-group">
+      <label class="ctrl-label" for="ctrl-criterion">Criterion</label>
+      <select id="ctrl-criterion">
+        <option value="win">Win Probability</option>
+        <option value="percentile">Mean Percentile</option>
+        <option value="score">Mean Score</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <label class="ctrl-label" for="ctrl-scoring">Scoring</label>
+      <select id="ctrl-scoring">
+        <option value="traditional">Traditional (2^round)</option>
+        <option value="upset">Upset (seed bonus)</option>
+        <option value="seed">Seed + Round</option>
+      </select>
+    </div>
+    <div class="ctrl-spacer"></div>
+    <button class="ctrl-advanced-toggle" id="advanced-toggle" aria-expanded="false" aria-controls="controls-advanced">
+      Advanced <span class="chevron" aria-hidden="true">▼</span>
+    </button>
+    <div class="find-btn-wrap">
+      <button id="find-btn">Find Best Bracket →</button>
+    </div>
+  </div>
+
+  <div class="controls-advanced" id="controls-advanced" aria-hidden="true">
+    <div class="controls-advanced-inner">
+      <div class="ctrl-group">
+        <label class="ctrl-label" for="ctrl-candidates">Candidates</label>
+        <input type="number" id="ctrl-candidates" value="500" min="10" max="5000" step="50">
+      </div>
+      <div class="ctrl-group">
+        <label class="ctrl-label" for="ctrl-sims">Simulations</label>
+        <input type="number" id="ctrl-sims" value="2000" min="100" max="20000" step="100">
+      </div>
+      <div class="ctrl-group">
+        <label class="ctrl-label" for="ctrl-test">Test Sims</label>
+        <input type="number" id="ctrl-test" value="1000" min="100" max="10000" step="100">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Status bar ──────────────────────────────────────────────────────── -->
+<div id="status-bar" role="status" aria-live="polite">
+  <div class="status-inner">
+    <div class="status-spinner" aria-hidden="true"></div>
+    <span id="status-text">Starting…</span>
+    <span id="status-step"></span>
+  </div>
+  <div class="progress-track">
+    <div class="progress-fill" id="progress-fill"></div>
+  </div>
+</div>
+
+<!-- ── Stats strip ─────────────────────────────────────────────────────── -->
+<div id="stats-strip" aria-label="Results">
+  <div class="stats-inner">
+    <div class="stat-block stat-block--primary">
+      <div class="stat-label">Win Probability</div>
+      <span class="stat-value" id="stat-win">—</span>
+      <div class="stat-context" id="stat-win-ctx"></div>
+    </div>
+    <div class="stat-block">
+      <div class="stat-label">Mean Percentile</div>
+      <span class="stat-value" id="stat-pct">—</span>
+    </div>
+    <div class="stat-block">
+      <div class="stat-label">Mean Score</div>
+      <span class="stat-value" id="stat-score">—</span>
+      <div class="stat-context">pts · max 192</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Tabs ────────────────────────────────────────────────────────────── -->
+<div class="tabs-bar" role="tablist">
+  <button class="tab-btn active" data-panel="bracket" role="tab" aria-selected="true">Bracket</button>
+  <button class="tab-btn locked" data-panel="analysis" id="tab-analysis" role="tab" aria-selected="false" aria-disabled="true">Score Analysis</button>
+</div>
+
+<!-- ── Content panels ─────────────────────────────────────────────────── -->
+<div class="bracket-area">
+
+  <div class="panel active" id="panel-bracket" role="tabpanel">
+    <div class="bracket-wrap" id="bracket-wrap">
+      <div class="empty-state">
+        <div class="status-spinner" aria-hidden="true"></div>
+        <p>Loading bracket…</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-analysis" role="tabpanel">
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>Score Distribution</h3>
+        <canvas id="chart-score"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Percentile Distribution</h3>
+        <canvas id="chart-pct"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Scripts ─────────────────────────────────────────────────────────── -->
+<script>
+// ── State ────────────────────────────────────────────────────────────────
+let currentLeague       = 'men';
+let running             = false;
+let resultData          = null;
+let currentBracketSlots = null;
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ── Helpers ──────────────────────────────────────────────────────────────
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function animateFadeUp(el) {
+  el.classList.remove('fade-up');
+  void el.offsetWidth;
+  el.classList.add('fade-up');
+}
+
+// ── Progress bar ──────────────────────────────────────────────────────────
+const STAGES = [
+  { re: /fitting/i,     pct: 12, step: '1 / 6' },
+  { re: /generating/i,  pct: 28, step: '2 / 6' },
+  { re: /simulating/i,  pct: 62, step: '3 / 6' },
+  { re: /scoring/i,     pct: 78, step: '4 / 6' },
+  { re: /testing/i,     pct: 91, step: '5 / 6' },
+  { re: /rendering/i,   pct: 97, step: '6 / 6' },
+];
+
+function setProgress(pct, step) {
+  document.getElementById('progress-fill').style.width = pct + '%';
+  const stepEl = document.getElementById('status-step');
+  if (step) stepEl.textContent = step;
+}
+
+function resetProgress() {
+  const fill = document.getElementById('progress-fill');
+  fill.style.transition = 'none';
+  fill.style.width = '0%';
+  void fill.offsetWidth;
+  fill.style.transition = '';
+  document.getElementById('status-step').textContent = '';
+}
+
+// ── Stat counter animation ────────────────────────────────────────────────
+function countUp(el, to, suffix, duration) {
+  if (reducedMotion) { el.textContent = to.toFixed(1) + suffix; return; }
+  const start = performance.now();
+  const easeOut = t => 1 - Math.pow(1 - t, 3);
+  (function step(now) {
+    const t = Math.min(1, (now - start) / duration);
+    el.textContent = (to * easeOut(t)).toFixed(1) + suffix;
+    if (t < 1) requestAnimationFrame(step);
+  })(start);
+}
+
+// ── Tab switching ────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.classList.contains('locked')) return;
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.remove('active');
+      b.setAttribute('aria-selected', 'false');
+    });
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    btn.setAttribute('aria-selected', 'true');
+    document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
+    if (btn.dataset.panel === 'analysis' && resultData) {
+      drawHistogram('chart-score', resultData.scores,      false);
+      drawHistogram('chart-pct',   resultData.percentiles, true);
+    }
+  });
+});
+
+// ── League toggle ────────────────────────────────────────────────────────
+document.querySelectorAll('.league-toggle button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (running) return;
+    document.querySelectorAll('.league-toggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentLeague = btn.dataset.league;
+    resultData = null;
+    document.getElementById('tab-analysis').classList.add('locked');
+    document.getElementById('stats-strip').classList.remove('visible');
+    loadBracket();
+  });
+});
+
+// ── Advanced toggle ──────────────────────────────────────────────────────
+const advancedToggle = document.getElementById('advanced-toggle');
+const advancedPanel  = document.getElementById('controls-advanced');
+advancedToggle.addEventListener('click', () => {
+  const open = advancedPanel.classList.toggle('open');
+  advancedToggle.classList.toggle('open', open);
+  advancedToggle.setAttribute('aria-expanded', open);
+  advancedPanel.setAttribute('aria-hidden', !open);
+});
+
+// ── Bracket renderer ──────────────────────────────────────────────────────
+// Card-based SVG bracket. No matplotlib dependency — text is always readable.
+//
+// Layout (1800 × 900 viewBox, min-width in container):
+//   Left half : R1..F4 columns advancing right toward center
+//   Right half: R1..F4 columns advancing left toward center
+//   Center    : Championship card
+//
+// Picks arrive in display order (from /api/bracket/json or SSE result):
+//   picks[0..15]  = left R2 (16 winners)
+//   picks[16..31] = right R2
+//   picks[32..39] = left R3
+//   picks[40..47] = right R3
+//   picks[48..51] = left R4
+//   picks[52..55] = right R4
+//   picks[56..57] = left F4
+//   picks[58..59] = right F4
+//   picks[60]     = left finalist (→ championship)
+//   picks[61]     = right finalist (→ championship)
+//   picks[62]     = champion
+
+const B = {
+  W: 1800, H: 900,
+  cardW: 120, cardH: 22,
+  seedW: 22,
+  conn: 28,
+  // left column x (left edge of card) for R1..F4
+  lx: [70, 218, 366, 514, 662],
+  // right column x (left edge of card) for R1..F4
+  rx: [1610, 1462, 1314, 1166, 1018],
+  // championship area
+  champX: 810, champW: 180, champH: 32,
+};
+
+const C = {
+  line:   '#ddd8d0',
+  ink:    '#1e1e2e',
+  muted:  '#7a7a8e',
+  surf:   '#ffffff',
+  tint:   '#fdf3ec',
+  accent: '#d45f00',
+  rule:   '#e8e3da',
+  seedBg: '#f4f0eb',
+};
+
+function slotCy(idx, total) {
+  return (idx + 0.5) / total * B.H;
+}
+
+function svgEl(tag, attrs = {}, text = '') {
+  const NS = 'http://www.w3.org/2000/svg';
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (text) e.textContent = text;
+  return e;
+}
+
+function drawCard(parent, x, cy, seed, name, picked, isChamp = false, teamId = '') {
+  const w = isChamp ? B.champW : B.cardW;
+  const h = isChamp ? B.champH : B.cardH;
+  const y = cy - h / 2;
+  const fs = isChamp ? 14 : 11;
+  const seedFs = isChamp ? 11 : 9;
+  const sw = isChamp ? B.seedW + 4 : B.seedW;
+
+  const attrs = { 'data-picked': picked ? '1' : '0' };
+  if (teamId) attrs['data-team-id'] = teamId;
+  if (isChamp) attrs['data-champ'] = '1';
+  const g = svgEl('g', attrs);
+
+  // Card background
+  g.appendChild(svgEl('rect', {
+    x, y, width: w, height: h, rx: 3,
+    fill: picked ? C.tint : C.surf,
+    stroke: picked ? C.accent : C.rule,
+    'stroke-width': picked ? 1.5 : 0.75,
+  }));
+
+  // Seed badge background
+  g.appendChild(svgEl('rect', {
+    x, y, width: sw, height: h, rx: 3,
+    fill: picked ? '#f5dece' : C.seedBg,
+  }));
+  // Seed badge right border separator
+  g.appendChild(svgEl('line', {
+    x1: x + sw, y1: y, x2: x + sw, y2: y + h,
+    stroke: picked ? '#e8b89a' : C.rule, 'stroke-width': 0.75,
+  }));
+
+  // Seed number
+  g.appendChild(svgEl('text', {
+    x: x + sw / 2, y: cy + seedFs * 0.38,
+    'text-anchor': 'middle', 'font-size': seedFs,
+    fill: picked ? C.accent : C.muted, 'font-weight': '600',
+    'font-family': 'DM Sans, sans-serif',
+  }, String(seed)));
+
+  // Team name (clipped to card width)
+  const nameEl = svgEl('text', {
+    x: x + sw + 6, y: cy + fs * 0.38,
+    'text-anchor': 'start', 'font-size': fs,
+    fill: picked ? C.accent : C.ink,
+    'font-weight': picked ? '600' : '400',
+    'font-family': 'DM Sans, sans-serif',
+    'clip-path': `inset(0 0 0 0)`,
+  }, truncName(name, isChamp ? 22 : 15));
+  g.appendChild(nameEl);
+
+  if (isChamp) {
+    // "CHAMPION" label above
+    g.appendChild(svgEl('text', {
+      x: x + w / 2, y: cy - h / 2 - 6,
+      'text-anchor': 'middle', 'font-size': 8,
+      fill: C.accent, 'font-weight': '700',
+      'letter-spacing': '0.10em',
+      'font-family': 'Barlow Condensed, sans-serif',
+    }, 'CHAMPION'));
+  }
+
+  parent.appendChild(g);
+  return g;
+}
+
+function drawPlaceholder(parent, x, cy) {
+  const h = B.cardH;
+  parent.appendChild(svgEl('rect', {
+    x, y: cy - h / 2, width: B.cardW, height: h, rx: 3,
+    fill: 'none', stroke: C.line, 'stroke-width': 0.5,
+    'stroke-dasharray': '3 3',
+  }));
+}
+
+function drawLine(parent, x1, y1, x2, y2) {
+  parent.appendChild(svgEl('line', {
+    x1, y1, x2, y2, stroke: C.line, 'stroke-width': 0.8,
+    'stroke-linecap': 'round',
+  }));
+}
+
+function drawElbow(parent, cardRightX, topCy, botCy, nextLeftX) {
+  const vx  = (cardRightX + nextLeftX) / 2;
+  const mid = (topCy + botCy) / 2;
+  drawLine(parent, cardRightX, topCy, vx, topCy);
+  drawLine(parent, cardRightX, botCy, vx, botCy);
+  drawLine(parent, vx, topCy, vx, botCy);
+  drawLine(parent, vx, mid, nextLeftX, mid);
+}
+
+function drawElbowRight(parent, cardLeftX, topCy, botCy, nextRightX) {
+  const vx  = (cardLeftX + nextRightX) / 2;
+  const mid = (topCy + botCy) / 2;
+  drawLine(parent, cardLeftX, topCy, vx, topCy);
+  drawLine(parent, cardLeftX, botCy, vx, botCy);
+  drawLine(parent, vx, topCy, vx, botCy);
+  drawLine(parent, vx, mid, nextRightX, mid);
+}
+
+function truncName(name, maxLen) {
+  if (!name || name.length <= maxLen) return name || '';
+  return name.slice(0, maxLen - 1) + '…';
+}
+
+function buildBracketSVG(slots, picks) {
+  // slots: 64 initial teams in display order (left 0..31, right 32..63)
+  // picks: 63 picks in display order, or null for empty bracket
+  const svg = svgEl('svg', {
+    viewBox: `0 0 ${B.W} ${B.H}`,
+    width: '100%',
+    'aria-label': 'Tournament bracket',
+    role: 'img',
+  });
+
+  const linesG = svgEl('g', { 'data-layer': 'lines' });
+  const cardsG = svgEl('g', { 'data-layer': 'cards' });
+  svg.appendChild(linesG);
+  svg.appendChild(cardsG);
+
+  // --- Left half R1 (32 teams) ---
+  for (let i = 0; i < 32; i++) {
+    const cy = slotCy(i, 32);
+    const { seed, name, id } = slots[i];
+    drawCard(cardsG, B.lx[0], cy, seed, name, false, false, id);
+  }
+
+  // --- Right half R1 (32 teams) ---
+  for (let i = 0; i < 32; i++) {
+    const cy = slotCy(i, 32);
+    const { seed, name, id } = slots[32 + i];
+    drawCard(cardsG, B.rx[0], cy, seed, name, false, false, id);
+  }
+
+  // --- Connector lines between rounds ---
+  // Left side: lx[r] → lx[r+1]
+  const leftSlotCounts = [32, 16, 8, 4, 2];
+  for (let r = 0; r < 4; r++) {
+    const total = leftSlotCounts[r];
+    const cardRight = B.lx[r] + B.cardW;
+    const nextLeft  = B.lx[r + 1];
+    for (let m = 0; m < total / 2; m++) {
+      drawElbow(linesG, cardRight, slotCy(2 * m, total), slotCy(2 * m + 1, total), nextLeft);
+    }
+  }
+  // Right side: rx[r] ← rx[r+1]
+  for (let r = 0; r < 4; r++) {
+    const total = leftSlotCounts[r];
+    const cardLeft  = B.rx[r];
+    const nextRight = B.rx[r + 1] + B.cardW;
+    for (let m = 0; m < total / 2; m++) {
+      drawElbowRight(linesG, cardLeft, slotCy(2 * m, total), slotCy(2 * m + 1, total), nextRight);
+    }
+  }
+  // F4 → Championship: proper elbow connectors
+  const champCY = B.H / 2;
+  const lF4Right = B.lx[4] + B.cardW;  // 782
+  const rF4Left  = B.rx[4];             // 1010
+  const rChampRight = B.champX + B.champW; // 990
+
+  const vxL = (lF4Right + B.champX) / 2;    // 796
+  const vxR = (rF4Left  + rChampRight) / 2;  // 1000
+
+  // Left F4 elbow → championship
+  drawLine(linesG, lF4Right,    slotCy(0, 2), vxL,      slotCy(0, 2));
+  drawLine(linesG, lF4Right,    slotCy(1, 2), vxL,      slotCy(1, 2));
+  drawLine(linesG, vxL, slotCy(0, 2), vxL, slotCy(1, 2));
+  drawLine(linesG, vxL,         champCY,      B.champX, champCY);
+
+  // Right F4 elbow → championship
+  drawLine(linesG, rF4Left,     slotCy(0, 2), vxR,         slotCy(0, 2));
+  drawLine(linesG, rF4Left,     slotCy(1, 2), vxR,         slotCy(1, 2));
+  drawLine(linesG, vxR, slotCy(0, 2), vxR, slotCy(1, 2));
+  drawLine(linesG, vxR,         champCY,      rChampRight, champCY);
+
+  // --- Picks (if provided) ---
+  const pickEls = []; // {el, round} for animation
+
+  if (picks) {
+    // Round groupings and their column positions
+    const pickRounds = [
+      // [picks_start, picks_end, side, roundIdx, totalSlots]
+      [0,  16, 'L', 1, 16],   // left R2
+      [16, 32, 'R', 1, 16],   // right R2
+      [32, 40, 'L', 2, 8],    // left R3
+      [40, 48, 'R', 2, 8],    // right R3
+      [48, 52, 'L', 3, 4],    // left R4
+      [52, 56, 'R', 3, 4],    // right R4
+      [56, 58, 'L', 4, 2],    // left F4
+      [58, 60, 'R', 4, 2],    // right F4
+    ];
+
+    for (const [start, end, side, col, total] of pickRounds) {
+      const colIdx = col; // 1=R2, 2=R3, 3=R4, 4=F4
+      const xs = side === 'L' ? B.lx[colIdx] : B.rx[colIdx];
+      for (let i = 0; i < end - start; i++) {
+        const pick = picks[start + i];
+        const cy   = slotCy(i, total);
+        const g    = drawCard(cardsG, xs, cy, pick.seed, pick.name, true, false, pick.id);
+        pickEls.push({ el: g, round: col });
+      }
+    }
+
+    // Champion card (picks[62]) — finalists are implied by F4 columns + elbow lines
+    {
+      const p = picks[62];
+      const g = drawCard(cardsG, B.champX, champCY, p.seed, p.name, true, true, p.id);
+      pickEls.push({ el: g, round: 6 });
+    }
+  } else {
+    // Empty placeholders for R2..F4 and championship
+    const emptyRounds = [
+      [0, 16, 'L', 1, 16], [16, 32, 'R', 1, 16],
+      [0, 8,  'L', 2, 8],  [0, 8,  'R', 2, 8],
+      [0, 4,  'L', 3, 4],  [0, 4,  'R', 3, 4],
+      [0, 2,  'L', 4, 2],  [0, 2,  'R', 4, 2],
+    ];
+    for (const [start, end, side, col, total] of emptyRounds) {
+      const xs = side === 'L' ? B.lx[col] : B.rx[col];
+      for (let i = 0; i < end - start; i++) {
+        drawPlaceholder(cardsG, xs, slotCy(i, total));
+      }
+    }
+    // Championship placeholder
+    const ph = svgEl('rect', {
+      x: B.champX, y: champCY - B.champH / 2,
+      width: B.champW, height: B.champH, rx: 3,
+      fill: 'none', stroke: C.line, 'stroke-width': 0.75,
+      'stroke-dasharray': '4 3',
+    });
+    cardsG.appendChild(ph);
+  }
+
+  return { svg, pickEls };
+}
+
+// ── Bracket reveal animation ──────────────────────────────────────────────
+function revealPickElements(pickEls) {
+  if (reducedMotion || !pickEls.length) return;
+
+  const GROUP_DELAY  = 180;
+  const ITEM_STAGGER = 10;
+
+  // Group by round (1..6), sort ascending so R2 reveals first
+  const byRound = {};
+  for (const { el, round } of pickEls) {
+    (byRound[round] = byRound[round] || []).push(el);
+  }
+  const rounds = Object.keys(byRound).map(Number).sort((a, b) => a - b);
+
+  let lastDelay = 0;
+  let championG = null;
+
+  rounds.forEach((r, ri) => {
+    const group = byRound[r];
+    group.forEach((el, ii) => {
+      const delay = ri * GROUP_DELAY + ii * ITEM_STAGGER;
+      lastDelay = Math.max(lastDelay, delay + 240);
+      el.animate(
+        [{ opacity: 0 }, { opacity: 1 }],
+        { duration: 240, delay, fill: 'both', easing: 'ease-out' }
+      );
+    });
+    if (r === 6) championG = group[0];
+  });
+
+  // Champion glow pulse
+  if (championG) {
+    setTimeout(() => {
+      championG.animate([
+        { filter: 'drop-shadow(0 0 0px #d45f0000)' },
+        { filter: 'drop-shadow(0 0 10px #d45f00bb)' },
+        { filter: 'drop-shadow(0 0 4px #d45f0066)' },
+        { filter: 'drop-shadow(0 0 0px #d45f0000)' },
+      ], { duration: 1200, easing: 'ease-in-out', fill: 'forwards' });
+    }, lastDelay + 60);
+  }
+}
+
+// ── Bracket interactivity (path tracing on hover) ────────────────────────
+function addBracketInteractivity(svgEl) {
+  const pickCards = [...svgEl.querySelectorAll('g[data-team-id][data-picked="1"]')];
+  if (!pickCards.length) return;
+
+  let activeTeam = null;
+
+  function setTrace(teamId) {
+    if (teamId === activeTeam) return;
+    activeTeam = teamId;
+    svgEl.classList.toggle('tracing', !!teamId);
+    pickCards.forEach(g => {
+      g.classList.toggle('path-active', !!teamId && g.getAttribute('data-team-id') === teamId);
+    });
+  }
+
+  // Delegated — mouseover bubbles, so we catch all card children
+  svgEl.addEventListener('mouseover', e => {
+    const g = e.target.closest('g[data-team-id]');
+    setTrace(g ? g.getAttribute('data-team-id') : null);
+  });
+
+  svgEl.addEventListener('mouseleave', () => setTrace(null));
+}
+
+// ── Load bracket ─────────────────────────────────────────────────────────
+async function loadBracket() {
+  const wrap = document.getElementById('bracket-wrap');
+
+  async function _load() {
+    try {
+      const res = await fetch(`/api/bracket/json?league=${currentLeague}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      currentBracketSlots = data.slots;
+      wrap.innerHTML = '';
+      const { svg } = buildBracketSVG(data.slots, null);
+      wrap.appendChild(svg);
+      addBracketInteractivity(svg);
+    } catch (e) {
+      wrap.innerHTML = `<div class="empty-state"><p>Could not load bracket: ${e.message}</p></div>`;
+    }
+  }
+
+  wrap.innerHTML = `<div class="empty-state"><div class="status-spinner" aria-hidden="true"></div><p>Loading bracket…</p></div>`;
+
+  if ('startViewTransition' in document) {
+    await document.startViewTransition(_load).finished;
+  } else {
+    await _load();
+  }
+}
+
+// ── Find bracket ─────────────────────────────────────────────────────────
+document.getElementById('find-btn').addEventListener('click', findBracket);
+
+async function findBracket() {
+  if (running) return;
+  running = true;
+
+  const btn       = document.getElementById('find-btn');
+  const statusBar = document.getElementById('status-bar');
+
+  btn.disabled      = true;
+  btn.textContent   = 'Working…';
+  statusBar.className = 'visible';
+  document.getElementById('status-text').textContent = 'Starting…';
+  resetProgress();
+
+  const body = {
+    league:         currentLeague,
+    pool_size:      parseInt(document.getElementById('ctrl-pool').value),
+    criterion:      document.getElementById('ctrl-criterion').value,
+    scoring:        document.getElementById('ctrl-scoring').value,
+    num_candidates: parseInt(document.getElementById('ctrl-candidates').value),
+    num_sims:       parseInt(document.getElementById('ctrl-sims').value),
+    num_test:       parseInt(document.getElementById('ctrl-test').value),
+  };
+
+  try {
+    const res = await fetch('/api/find', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Server error ${res.status}`);
+
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const blocks = buf.split('\n\n');
+      buf = blocks.pop();
+      for (const block of blocks) {
+        if (!block.startsWith('data: ')) continue;
+        handleEvent(JSON.parse(block.slice(6)));
+      }
+    }
+  } catch (e) {
+    showError(e.message);
+    return;
+  } finally {
+    running         = false;
+    btn.disabled    = false;
+    btn.textContent = 'Find Best Bracket →';
+  }
+
+  statusBar.classList.remove('visible');
+}
+
+function handleEvent(evt) {
+  if (evt.type === 'progress') {
+    document.getElementById('status-text').textContent = evt.message;
+    const stage = STAGES.find(s => s.re.test(evt.message));
+    if (stage) setProgress(stage.pct, stage.step);
+  } else if (evt.type === 'result') {
+    setProgress(100, '');
+    setTimeout(() => showResult(evt), 300);
+  } else if (evt.type === 'error') {
+    showError(evt.message);
+  }
+}
+
+// ── Show result ───────────────────────────────────────────────────────────
+function showResult(evt) {
+  resultData = evt;
+
+  // Stats — count up from zero
+  const pool   = parseInt(document.getElementById('ctrl-pool').value);
+  const random = (100 / (pool + 1)).toFixed(1);
+  document.getElementById('stat-win-ctx').textContent = `vs. ${random}% at random`;
+  const strip = document.getElementById('stats-strip');
+  strip.classList.add('visible');
+  animateFadeUp(strip);
+  countUp(document.getElementById('stat-win'),   evt.stats.win_prob,          '%', 900);
+  countUp(document.getElementById('stat-pct'),   evt.stats.mean_percentile,   '%', 900);
+  countUp(document.getElementById('stat-score'), evt.stats.mean_score,        '', 900);
+
+  // Bracket: rebuild with picks → animate via View Transitions (or instant)
+  const wrap = document.getElementById('bracket-wrap');
+
+  function _applyBracket() {
+    wrap.innerHTML = '';
+    const { svg, pickEls } = buildBracketSVG(currentBracketSlots, evt.picks);
+    wrap.appendChild(svg);
+    addBracketInteractivity(svg);
+    revealPickElements(pickEls);
+  }
+
+  if ('startViewTransition' in document && !reducedMotion) {
+    document.startViewTransition(_applyBracket);
+  } else {
+    _applyBracket();
+  }
+
+  // Unlock analysis tab
+  const analysisTab = document.getElementById('tab-analysis');
+  analysisTab.classList.remove('locked');
+  analysisTab.removeAttribute('aria-disabled');
+
+  drawHistogram('chart-score', evt.scores,      false);
+  drawHistogram('chart-pct',   evt.percentiles, true);
+}
+
+
+
+// ── Error state ───────────────────────────────────────────────────────────
+function showError(msg) {
+  const bar = document.getElementById('status-bar');
+  bar.className = 'visible error';
+  document.getElementById('status-text').textContent = '⚠ ' + msg;
+  running = false;
+  const btn = document.getElementById('find-btn');
+  btn.disabled    = false;
+  btn.textContent = 'Find Best Bracket →';
+}
+
+// ── Histogram ─────────────────────────────────────────────────────────────
+// Stores per-canvas state (abort controller for listeners, current heights)
+const _chartState = {};
+
+function drawHistogram(canvasId, data, isPercent) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || !data) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  const W   = canvas.parentElement.clientWidth - 48;
+  const H   = 220;
+  canvas.width        = W * dpr;
+  canvas.height       = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const PAD    = { top: 16, right: 12, bottom: 38, left: 44 };
+  const cW     = W - PAD.left - PAD.right;
+  const cH     = H - PAD.top  - PAD.bottom;
+  const nBins  = isPercent ? 20 : 25;
+  const minVal = isPercent ? 0  : Math.min(...data);
+  const maxVal = isPercent ? 1  : Math.max(...data);
+  const range  = maxVal - minVal || 1;
+  const step   = range / nBins;
+
+  const counts = new Array(nBins).fill(0);
+  for (const v of data) counts[Math.min(nBins - 1, Math.floor((v - minVal) / step))]++;
+  const maxCount = Math.max(...counts) || 1;
+  const slotW = cW / nBins;
+  const barW  = slotW * 0.78;
+  const gap   = (slotW - barW) / 2;
+
+  const ACCENT  = C.accent;
+  const RULE    = '#e8e3da';
+  const INK3    = '#888';
+  const INK     = C.ink;
+
+  // ── Core render function ──────────────────────────────────────────────
+  function render(animT, hoverBin = -1) {
+    ctx.clearRect(0, 0, W, H);
+
+    // Background
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, W, H);
+
+    // Grid + Y labels
+    ctx.font = `10px 'DM Sans', sans-serif`;
+    for (let i = 0; i <= 4; i++) {
+      const y = PAD.top + cH - (i / 4) * cH;
+      ctx.strokeStyle = RULE; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left + cW, y); ctx.stroke();
+      ctx.fillStyle = INK3; ctx.textAlign = 'right';
+      ctx.fillText(Math.round((i / 4) * maxCount), PAD.left - 6, y + 3.5);
+    }
+
+    // Bars — staggered per-bin easing
+    for (let i = 0; i < nBins; i++) {
+      // Each bar starts at localT = (animT - offset) / (1-offset), clamped
+      const offset = i / nBins * 0.5;  // stagger: last bar starts at 50% through animation
+      const localT = Math.max(0, Math.min(1, (animT - offset) / (1 - offset)));
+      const ease   = 1 - Math.pow(1 - localT, 4);  // ease-out-quart
+      const bH     = (counts[i] / maxCount) * cH * ease;
+      const bx     = PAD.left + i * slotW + gap;
+      const by     = PAD.top + cH - bH;
+
+      if (i === hoverBin) {
+        // Highlight column
+        ctx.fillStyle = 'rgba(212,95,0,0.07)';
+        ctx.fillRect(PAD.left + i * slotW, PAD.top, slotW, cH);
+        ctx.fillStyle = ACCENT;
+        ctx.globalAlpha = 1;
+      } else {
+        ctx.fillStyle = ACCENT;
+        ctx.globalAlpha = hoverBin >= 0 ? 0.45 : 0.82;
+      }
+      ctx.fillRect(bx, by, barW, bH);
+      ctx.globalAlpha = 1;
+    }
+
+    // X axis
+    ctx.strokeStyle = RULE; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(PAD.left, PAD.top + cH); ctx.lineTo(PAD.left + cW, PAD.top + cH);
+    ctx.stroke();
+
+    // X labels
+    ctx.fillStyle = INK3; ctx.textAlign = 'center';
+    ctx.font = `10px 'DM Sans', sans-serif`;
+    const nXL = 6;
+    for (let i = 0; i <= nXL; i++) {
+      const v = minVal + (i / nXL) * range;
+      const x = PAD.left + (i / nXL) * cW;
+      ctx.fillText(isPercent ? (v * 100).toFixed(0) + '%' : Math.round(v).toString(), x, H - PAD.bottom + 16);
+    }
+
+    // Hover crosshair + tooltip
+    if (hoverBin >= 0 && animT >= 1) {
+      const bx   = PAD.left + hoverBin * slotW + slotW / 2;
+      const bH   = (counts[hoverBin] / maxCount) * cH;
+      const by   = PAD.top + cH - bH;
+      const pct  = (counts[hoverBin] / data.length * 100).toFixed(1);
+      const valLo = minVal + hoverBin * step;
+      const valHi = valLo + step;
+      const label = isPercent
+        ? `${(valLo * 100).toFixed(0)}–${(valHi * 100).toFixed(0)}% · ${counts[hoverBin]} (${pct}%)`
+        : `${Math.round(valLo)}–${Math.round(valHi)} pts · ${counts[hoverBin]} (${pct}%)`;
+
+      // Vertical hair
+      ctx.strokeStyle = ACCENT; ctx.lineWidth = 1; ctx.globalAlpha = 0.5;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx, PAD.top + cH); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
+
+      // Tooltip bubble
+      ctx.font = `bold 10px 'DM Sans', sans-serif`;
+      const tw = ctx.measureText(label).width + 18;
+      const th = 22;
+      let tx = bx - tw / 2;
+      tx = Math.max(PAD.left, Math.min(tx, PAD.left + cW - tw));
+      const ty = Math.max(PAD.top + 2, by - th - 6);
+      ctx.fillStyle = INK;
+      ctx.beginPath();
+      ctx.roundRect(tx, ty, tw, th, 4);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'left';
+      ctx.fillText(label, tx + 9, ty + 14.5);
+    }
+  }
+
+  // ── Animated entrance ────────────────────────────────────────────────
+  // Tear down old hover listener if any
+  if (_chartState[canvasId]?.abort) _chartState[canvasId].abort.abort();
+  const abort = new AbortController();
+  _chartState[canvasId] = { abort };
+
+  if (reducedMotion) {
+    render(1);
+  } else {
+    const start = performance.now();
+    const dur   = 700;
+    (function frame(now) {
+      const t = Math.min(1, (now - start) / dur);
+      render(t);
+      if (t < 1) requestAnimationFrame(frame);
+      else attachHover();
+    })(start);
+  }
+
+  // ── Hover interaction ────────────────────────────────────────────────
+  function attachHover() {
+    if (abort.signal.aborted) return;
+    let hoverBin = -1;
+
+    function onMove(e) {
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / (rect.width / W);
+      const bin = Math.floor((x - PAD.left) / slotW);
+      const next = (bin >= 0 && bin < nBins) ? bin : -1;
+      if (next !== hoverBin) { hoverBin = next; render(1, hoverBin); }
+    }
+    function onLeave() { hoverBin = -1; render(1, -1); }
+
+    canvas.addEventListener('mousemove', onMove, { signal: abort.signal });
+    canvas.addEventListener('mouseleave', onLeave, { signal: abort.signal });
+  }
+
+  if (reducedMotion) attachHover();
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────
+loadBracket();
+</script>
+
+</body>
+</html>
