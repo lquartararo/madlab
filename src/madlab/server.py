@@ -41,10 +41,6 @@ app = FastAPI(title="madlab")
 _TEMPLATE_PATH = Path(__file__).parent / "templates" / "index.html"
 
 
-
-    return svg
-
-
 def _load_games_safe(league: str, year: int):
     try:
         from madlab.bracket import load_games, DATA_DIR
