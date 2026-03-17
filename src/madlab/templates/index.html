@@ -330,11 +330,13 @@
       font-size: 0.7rem;
       font-style: italic;
       color: var(--ink-3);
-      padding: 0 1rem 0.5rem 1rem;
-      max-width: 60ch;
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
       opacity: 0;
       transition: opacity 0.6s;
-      line-height: 1.4;
     }
     #sim-commentary.visible { opacity: 1; }
 
@@ -660,8 +662,8 @@
     <div class="status-spinner" aria-hidden="true"></div>
     <span id="status-text">Starting…</span>
     <span id="status-step"></span>
+    <span id="sim-commentary" aria-hidden="true"></span>
   </div>
-  <div id="sim-commentary" aria-hidden="true"></div>
   <div class="progress-track">
     <div class="progress-fill" id="progress-fill"></div>
   </div>
